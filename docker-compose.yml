@@ -1,25 +1,35 @@
 services:
-  mysql:
-    image: mysql:9.0
+  server:
+    build:
+      context: .
+      target: development
     ports:
-      - "3306:3306"
+      - 8080:8080
+      - 8000:8000
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
-      - MYSQL_ROOT_PASSWORD=
-      - MYSQL_ALLOW_EMPTY_PASSWORD=true
-      - MYSQL_USER=petclinic
-      - MYSQL_PASSWORD=petclinic
-      - MYSQL_DATABASE=petclinic
+      - POSTGRES_URL=jdbc:postgresql://db:5432/petclinic
+    develop:
+      watch:
+        - action: rebuild
+          path: .
+  db:
+    image: postgres
+    restart: always
     volumes:
-      - "./conf.d:/etc/mysql/conf.d:ro"
-    profiles:
-      - mysql
-  postgres:
-    image: postgres:17.0
-    ports:
-      - "5432:5432"
+      - db-data:/var/lib/postgresql/data
     environment:
-      - POSTGRES_PASSWORD=petclinic
-      - POSTGRES_USER=petclinic
       - POSTGRES_DB=petclinic
-    profiles:
-      - postgres
+      - POSTGRES_USER=petclinic
+      - POSTGRES_PASSWORD=petclinic
+    ports:
+      - 5432:5432
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "petclinic"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+volumes:
+  db-data:
